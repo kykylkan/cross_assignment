@@ -1,98 +1,133 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { AuthInput } from '@/components/coffee/AuthInput';
+import { BrandLogo } from '@/components/coffee/BrandLogo';
+import { OutlineButton } from '@/components/coffee/OutlineButton';
+import { PrimaryButton } from '@/components/coffee/PrimaryButton';
+import { ScreenContainer } from '@/components/coffee/ScreenContainer';
+import { SectionDivider } from '@/components/coffee/SectionDivider';
+import {
+  coffeeColors,
+  coffeeRadius,
+  coffeeSpacing,
+  coffeeTypography,
+} from '@/constants/coffeeTheme';
 
-export default function HomeScreen() {
+export default function LoginScreen() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleAuthenticate = () => {
+    router.replace('/onboarding');
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScreenContainer>
+      <View style={styles.header}>
+        <BrandLogo size={96} />
+        <View style={styles.headerText}>
+          <Text style={styles.title}>CoffeeGo</Text>
+          <Text style={styles.subtitle}>Order coffee in advance, skip the line</Text>
+        </View>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.form}>
+        <AuthInput
+          label="Email"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="your@email.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <AuthInput
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="••••••••"
+          secureTextEntry
+        />
+        <PrimaryButton title="Log In" onPress={handleAuthenticate} />
+      </View>
+
+      <Pressable accessibilityRole="button" onPress={() => router.push('/onboarding')} style={styles.linkWrapper}>
+        <Text style={styles.link}>Don&apos;t have an account? Sign up</Text>
+      </Pressable>
+
+      <View style={styles.socialSection}>
+        <SectionDivider label="Or continue with" />
+        <View style={styles.socialRow}>
+          <OutlineButton
+            title="Google"
+            leading={<FontAwesome name="google" size={18} color={coffeeColors.textPrimary} />}
+            onPress={handleAuthenticate}
+          />
+          <OutlineButton
+            title="Apple"
+            leading={<FontAwesome name="apple" size={20} color={coffeeColors.textPrimary} />}
+            onPress={handleAuthenticate}
+          />
+        </View>
+      </View>
+
+      <Pressable accessibilityRole="button" onPress={handleAuthenticate} style={styles.skipWrapper}>
+        <Text style={styles.skip}>Skip for now</Text>
+      </Pressable>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  header: {
     alignItems: 'center',
-    gap: 8,
+    gap: coffeeSpacing.md,
+    marginBottom: coffeeSpacing.xl,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  headerText: {
+    alignItems: 'center',
+    gap: coffeeSpacing.xs,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  title: {
+    color: coffeeColors.brandPrimary,
+    ...coffeeTypography.heading,
+  },
+  subtitle: {
+    color: coffeeColors.textSecondary,
+    ...coffeeTypography.paragraph,
+  },
+  form: {
+    gap: coffeeSpacing.md,
+    marginBottom: coffeeSpacing.md,
+  },
+  linkWrapper: {
+    marginBottom: coffeeSpacing.xl,
+  },
+  link: {
+    textAlign: 'center',
+    color: coffeeColors.brandSecondary,
+    fontWeight: '600',
+  },
+  socialSection: {
+    gap: coffeeSpacing.lg,
+    marginBottom: coffeeSpacing.xl,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: coffeeSpacing.md,
+  },
+  skipWrapper: {
+    borderRadius: coffeeRadius.sm,
+    paddingVertical: coffeeSpacing.sm,
+  },
+  skip: {
+    textAlign: 'center',
+    color: coffeeColors.textSecondary,
+    fontWeight: '500',
   },
 });
+

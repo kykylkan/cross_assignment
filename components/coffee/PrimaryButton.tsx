@@ -7,16 +7,21 @@ type PrimaryButtonProps = {
   title: string;
   onPress?: () => void;
   leading?: ReactNode;
+  size?: 'default' | 'small';
 };
 
-export function PrimaryButton({ title, onPress, leading }: PrimaryButtonProps) {
+export function PrimaryButton({ title, onPress, leading, size = 'default' }: PrimaryButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.button,
+        size === 'small' && styles.buttonSmall,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button">
       {leading}
-      <Text style={styles.label}>{title}</Text>
+      <Text style={[styles.label, size === 'small' && styles.labelSmall]}>{title}</Text>
     </Pressable>
   );
 }
@@ -26,16 +31,26 @@ const styles = StyleSheet.create({
     backgroundColor: coffeeColors.brandPrimary,
     borderRadius: coffeeRadius.md,
     paddingVertical: coffeeSpacing.md,
+    paddingHorizontal: coffeeSpacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
     gap: coffeeSpacing.sm,
     ...(Platform.OS === 'ios' ? coffeeShadow.soft : {}),
   },
+  buttonSmall: {
+    paddingVertical: coffeeSpacing.sm,
+    paddingHorizontal: coffeeSpacing.md,
+    borderRadius: 20,
+  },
   label: {
     color: coffeeColors.backgroundBase,
     ...coffeeTypography.subheading,
     fontWeight: '600',
+  },
+  labelSmall: {
+    ...coffeeTypography.paragraph,
+    fontSize: 14,
   },
   pressed: {
     opacity: 0.85,

@@ -1,11 +1,20 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  ListRenderItem,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { MenuItemCard } from '@/components/coffee/MenuItemCard';
 import { PrimaryButton } from '@/components/coffee/PrimaryButton';
 import { SearchInput } from '@/components/coffee/SearchInput';
-import { coffeeColors, coffeeShadow, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { coffeeColors, coffeeRadius, coffeeShadow, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { fetchPosts, Post } from '@/lib/api';
 
 const filters = [
   { id: 'all', label: 'All' },
@@ -14,50 +23,86 @@ const filters = [
   { id: 'snacks', label: '🥐 Snacks' },
 ];
 
-const menuItems = [
-  {
-    id: '1',
-    title: 'Caramel Latte',
-    description: 'Espresso with steamed milk and caramel.',
-    price: 5.5,
-    category: 'coffee',
-    badgeLabel: 'Hot',
-  },
-  {
-    id: '2',
-    title: 'Cappuccino',
-    description: 'Espresso with steamed milk foam.',
-    price: 4.5,
-    category: 'coffee',
-    badgeLabel: 'Hot',
-  },
-  {
-    id: '3',
-    title: 'Espresso',
-    description: 'Rich and bold coffee shot.',
-    price: 3.0,
-    category: 'coffee',
-  },
-  {
-    id: '4',
-    title: 'Iced Coffee',
-    description: 'Cold brew coffee over ice.',
-    price: 4.0,
-    category: 'cold',
-  },
-  {
-    id: '5',
-    title: 'Croissant',
-    description: 'Buttery, flaky pastry.',
-    price: 3.5,
-    category: 'snacks',
-  },
+type MenuItem = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: 'coffee' | 'cold' | 'snacks';
+  badgeLabel?: string;
+  imageUrl?: string;
+};
+
+const menuImages = [
+  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1510626176961-4b57d4fbad03?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80',
+  'https://images.unsplash.com/photo-1481391032119-d89fee407e44?auto=format&fit=crop&w=400&q=80',
 ];
+
+const categoryCycle: MenuItem['category'][] = ['coffee', 'cold', 'snacks'];
+const badgeByCategory: Record<MenuItem['category'], string> = {
+  coffee: 'Hot',
+  cold: 'Iced',
+  snacks: 'Fresh',
+};
+
+const mapPostToMenuItem = (post: Post, index: number): MenuItem => {
+  const cleanTitle = post.title.trim();
+  const preparedTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+  const cleanBody = post.body.replace(/\s+/g, ' ').trim();
+  const truncatedBody = cleanBody.length > 90 ? `${cleanBody.slice(0, 90)}…` : cleanBody;
+  const category = categoryCycle[index % categoryCycle.length];
+
+  return {
+    id: String(post.id),
+    title: preparedTitle,
+    description: `${truncatedBody} Perfect for your daily ritual.`,
+    price: Number((4 + ((post.id % 7) + 1) * 0.45).toFixed(2)),
+    category,
+    badgeLabel: badgeByCategory[category],
+    imageUrl: menuImages[index % menuImages.length],
+  };
+};
 
 export default function MenuScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMenuItems = useCallback(async (isPullToRefresh = false) => {
+    if (isPullToRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      setError(null);
+      const posts = await fetchPosts();
+      const normalizedItems = posts.slice(0, 30).map(mapPostToMenuItem);
+      setMenuItems(normalizedItems);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load menu items.';
+      setError(errorMessage);
+    } finally {
+      if (isPullToRefresh) {
+        setIsRefreshing(false);
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMenuItems();
+  }, [loadMenuItems]);
 
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
@@ -67,7 +112,38 @@ export default function MenuScreen() {
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [searchQuery, selectedFilter]);
+  }, [menuItems, searchQuery, selectedFilter]);
+
+  const renderItem: ListRenderItem<MenuItem> = ({ item }) => (
+    <MenuItemCard
+      {...item}
+      onPress={() => router.push({ pathname: '/product/[id]' as const, params: { id: item.id } })}
+    />
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      {isLoading ? (
+        <>
+          <ActivityIndicator color={coffeeColors.brandPrimary} size="large" />
+          <Text style={styles.emptySubtitle}>Loading menu...</Text>
+        </>
+      ) : error ? (
+        <>
+          <Text style={styles.emptyTitle}>Unable to load menu</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <Pressable onPress={() => loadMenuItems()} style={styles.retryButton}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={styles.emptyTitle}>No items found</Text>
+          <Text style={styles.emptySubtitle}>Try different keywords or filters.</Text>
+        </>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.root}>
@@ -94,21 +170,20 @@ export default function MenuScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {filteredItems.map((item) => (
-          <MenuItemCard
-            key={item.id}
-            {...item}
-            onPress={() => router.push({ pathname: '/product/[id]' as any, params: { id: item.id } })}
-          />
-        ))}
-        {filteredItems.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No items found</Text>
-            <Text style={styles.emptySubtitle}>Try different keywords or filters.</Text>
-          </View>
-        )}
-      </ScrollView>
+      <FlatList
+        data={filteredItems}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={renderEmptyState}
+        ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+        contentContainerStyle={[
+          styles.list,
+          filteredItems.length === 0 && styles.listEmpty,
+        ]}
+        refreshing={isRefreshing}
+        onRefresh={() => loadMenuItems(true)}
+        showsVerticalScrollIndicator={false}
+      />
 
       <View style={styles.ctaBar}>
         <PrimaryButton title="Go to Cart" onPress={() => router.push('/cart')} />
@@ -176,8 +251,14 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: coffeeSpacing.lg,
-    gap: coffeeSpacing.md,
     paddingBottom: coffeeSpacing.xxl * 1.5,
+  },
+  listEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  listSeparator: {
+    height: coffeeSpacing.md,
   },
   emptyState: {
     alignItems: 'center',
@@ -193,6 +274,18 @@ const styles = StyleSheet.create({
     color: coffeeColors.textSecondary,
     ...coffeeTypography.paragraph,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: coffeeSpacing.md,
+    paddingHorizontal: coffeeSpacing.lg,
+    paddingVertical: coffeeSpacing.sm,
+    borderRadius: coffeeRadius.lg,
+    backgroundColor: coffeeColors.brandPrimary,
+  },
+  retryText: {
+    color: coffeeColors.surface,
+    ...coffeeTypography.paragraph,
+    fontWeight: '600',
   },
   ctaBar: {
     position: 'absolute',

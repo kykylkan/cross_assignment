@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MilkSelector } from '@/components/coffee/MilkSelector';
 import { PrimaryButton } from '@/components/coffee/PrimaryButton';
@@ -17,63 +17,22 @@ import {
   coffeeSpacing,
   coffeeTypography,
 } from '@/constants/coffeeTheme';
-
-/**
- * Mock product data (in a real app, this would be fetched from API)
- */
-const mockProducts: Record<
-  string,
-  {
-    title: string;
-    description: string;
-    basePrice: number;
-    rating: number;
-    isAvailable: boolean;
-    imageUrl?: string;
-  }
-> = {
-  '1': {
-    title: 'Caramel Latte',
-    description: 'Espresso with steamed milk and caramel',
-    basePrice: 5.0,
-    rating: 4.8,
-    isAvailable: true,
-  },
-  '2': {
-    title: 'Cappuccino',
-    description: 'Espresso with steamed milk foam',
-    basePrice: 4.5,
-    rating: 4.8,
-    isAvailable: true,
-  },
-  '3': {
-    title: 'Espresso',
-    description: 'Rich and bold coffee shot',
-    basePrice: 3.0,
-    rating: 4.8,
-    isAvailable: true,
-  },
-  '4': {
-    title: 'Iced Coffee',
-    description: 'Cold brew coffee over ice',
-    basePrice: 4.0,
-    rating: 4.8,
-    isAvailable: true,
-  },
-  '5': {
-    title: 'Croissant',
-    description: 'Buttery, flaky pastry',
-    basePrice: 3.5,
-    rating: 4.8,
-    isAvailable: true,
-  },
-};
+import { fetchPostById, Post } from '@/lib/api';
 
 const sizeOptions = [
   { id: 's', label: 'S', volume: '12 oz', priceModifier: 0 },
   { id: 'm', label: 'M', volume: '16 oz', priceModifier: 0.5 },
   { id: 'l', label: 'L', volume: '20 oz', priceModifier: 1.0 },
 ];
+
+type ProductData = {
+  title: string;
+  description: string;
+  basePrice: number;
+  rating: number;
+  isAvailable: boolean;
+  imageUrl?: string;
+};
 
 const milkOptions = [
   { id: 'whole', label: 'Whole Milk', priceModifier: 0 },
@@ -98,6 +57,36 @@ const sweetnessLevels = [
   { id: '100', label: '100%', value: 100 },
 ];
 
+const productImages = [
+  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1432107294467-7c888478c548?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1481391032119-d89fee407e44?auto=format&fit=crop&w=800&q=80',
+];
+
+const normalizeTitle = (title: string) => {
+  const trimmed = title.trim();
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+const normalizeDescription = (body: string) => {
+  const cleanText = body.replace(/\s+/g, ' ').trim();
+  const truncated = cleanText.length > 160 ? `${cleanText.slice(0, 160)}…` : cleanText;
+  return `${truncated} Crafted with freshly roasted beans.`;
+};
+
+const mapPostToProduct = (post: Post): ProductData => {
+  return {
+    title: normalizeTitle(post.title),
+    description: normalizeDescription(post.body),
+    basePrice: Number((4 + ((post.id % 6) + 1) * 0.55).toFixed(2)),
+    rating: Number((4 + (post.id % 10) / 10).toFixed(1)),
+    isAvailable: true,
+    imageUrl: productImages[post.id % productImages.length],
+  };
+};
+
 /**
  * Product details screen
  * Receives id parameter through route.params and displays full product information
@@ -112,20 +101,82 @@ export default function ProductDetailsScreen() {
   const [selectedSyrup, setSelectedSyrup] = useState('none');
   const [selectedSweetness, setSelectedSweetness] = useState('100');
   const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<ProductData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Validate id parameter
-  if (!id) {
+  const totalPrice = useMemo(() => {
+    const basePrice = product?.basePrice ?? 0;
+    const sizePrice = sizeOptions.find((s) => s.id === selectedSize)?.priceModifier || 0;
+    const milkPrice = milkOptions.find((m) => m.id === selectedMilk)?.priceModifier || 0;
+    const syrupPrice = syrupOptions.find((s) => s.id === selectedSyrup)?.priceModifier || 0;
+    return (basePrice + sizePrice + milkPrice + syrupPrice) * quantity;
+  }, [product?.basePrice, quantity, selectedMilk, selectedSize, selectedSyrup]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProduct = async () => {
+      if (!id) {
+        setError('Product not found.');
+        setProduct(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const fetchedPost = await fetchPostById(Number(id));
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (!fetchedPost?.id) {
+          throw new Error('Product is currently unavailable.');
+        }
+
+        setProduct(mapPostToProduct(fetchedPost));
+      } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load product.';
+        setError(errorMessage);
+        setProduct(null);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProduct();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={coffeeColors.brandPrimary} />
+        <Text style={styles.loadingText}>Loading product...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error: product not found</Text>
+        <Text style={styles.errorText}>{error}</Text>
         <PrimaryButton title="Go Back" onPress={() => router.back()} />
       </View>
     );
   }
 
-  const product = mockProducts[id];
-
-  // Handle case when product is not found
   if (!product) {
     return (
       <View style={styles.errorContainer}>
@@ -134,12 +185,6 @@ export default function ProductDetailsScreen() {
       </View>
     );
   }
-
-  // Calculate total price
-  const sizePrice = sizeOptions.find((s) => s.id === selectedSize)?.priceModifier || 0;
-  const milkPrice = milkOptions.find((m) => m.id === selectedMilk)?.priceModifier || 0;
-  const syrupPrice = syrupOptions.find((s) => s.id === selectedSyrup)?.priceModifier || 0;
-  const totalPrice = (product.basePrice + sizePrice + milkPrice + syrupPrice) * quantity;
 
   const handleAddToCart = () => {
     // Cart addition logic will be here
@@ -409,5 +454,17 @@ const styles = StyleSheet.create({
     color: coffeeColors.textSecondary,
     ...coffeeTypography.paragraph,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: coffeeSpacing.md,
+    padding: coffeeSpacing.xl,
+    backgroundColor: coffeeColors.backgroundBase,
+  },
+  loadingText: {
+    color: coffeeColors.textSecondary,
+    ...coffeeTypography.paragraph,
   },
 });

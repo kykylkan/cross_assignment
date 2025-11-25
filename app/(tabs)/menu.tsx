@@ -13,7 +13,8 @@ import {
 import { MenuItemCard } from '@/components/coffee/MenuItemCard';
 import { PrimaryButton } from '@/components/coffee/PrimaryButton';
 import { SearchInput } from '@/components/coffee/SearchInput';
-import { coffeeColors, coffeeRadius, coffeeShadow, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { coffeeRadius, coffeeShadow, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { ThemePalette, useThemeMode } from '@/context/ThemeModeContext';
 import { fetchPosts, Post } from '@/lib/api';
 
 const filters = [
@@ -69,6 +70,7 @@ const mapPostToMenuItem = (post: Post, index: number): MenuItem => {
 
 export default function MenuScreen() {
   const router = useRouter();
+  const { palette } = useThemeMode();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -104,6 +106,8 @@ export default function MenuScreen() {
     loadMenuItems();
   }, [loadMenuItems]);
 
+  const styles = useMemo(() => createStyles(palette), [palette]);
+
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
       const matchesFilter = selectedFilter === 'all' || item.category === selectedFilter;
@@ -125,7 +129,7 @@ export default function MenuScreen() {
     <View style={styles.emptyState}>
       {isLoading ? (
         <>
-          <ActivityIndicator color={coffeeColors.brandPrimary} size="large" />
+          <ActivityIndicator color={palette.accent} size="large" />
           <Text style={styles.emptySubtitle}>Loading menu...</Text>
         </>
       ) : error ? (
@@ -192,107 +196,108 @@ export default function MenuScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: coffeeColors.backgroundMiddle,
-  },
-  header: {
-    paddingTop: 48,
-    paddingHorizontal: coffeeSpacing.lg,
-    paddingBottom: coffeeSpacing.lg,
-    gap: coffeeSpacing.md,
-    backgroundColor: coffeeColors.backgroundBase,
-    ...coffeeShadow.soft,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: coffeeSpacing.md,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: coffeeColors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backText: {
-    color: coffeeColors.textPrimary,
-    fontSize: 20,
-  },
-  headerTitle: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.heading,
-    fontSize: 24,
-  },
-  filtersRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: coffeeSpacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: coffeeSpacing.md,
-    paddingVertical: coffeeSpacing.xs,
-    borderRadius: 20,
-    backgroundColor: 'rgba(10, 107, 255, 0.08)',
-  },
-  filterChipActive: {
-    backgroundColor: coffeeColors.brandPrimary,
-  },
-  filterText: {
-    color: coffeeColors.textPrimary,
-    ...coffeeTypography.paragraph,
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: coffeeColors.surface,
-  },
-  list: {
-    padding: coffeeSpacing.lg,
-    paddingBottom: coffeeSpacing.xxl * 1.5,
-  },
-  listEmpty: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  listSeparator: {
-    height: coffeeSpacing.md,
-  },
-  emptyState: {
-    alignItems: 'center',
-    gap: coffeeSpacing.sm,
-    padding: coffeeSpacing.xl,
-  },
-  emptyTitle: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.subheading,
-    fontWeight: '700',
-  },
-  emptySubtitle: {
-    color: coffeeColors.textSecondary,
-    ...coffeeTypography.paragraph,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: coffeeSpacing.md,
-    paddingHorizontal: coffeeSpacing.lg,
-    paddingVertical: coffeeSpacing.sm,
-    borderRadius: coffeeRadius.lg,
-    backgroundColor: coffeeColors.brandPrimary,
-  },
-  retryText: {
-    color: coffeeColors.surface,
-    ...coffeeTypography.paragraph,
-    fontWeight: '600',
-  },
-  ctaBar: {
-    position: 'absolute',
-    bottom: coffeeSpacing.lg,
-    left: coffeeSpacing.lg,
-    right: coffeeSpacing.lg,
-  },
-});
+const createStyles = (palette: ThemePalette) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: palette.backgroundPrimary,
+    },
+    header: {
+      paddingTop: 48,
+      paddingHorizontal: coffeeSpacing.lg,
+      paddingBottom: coffeeSpacing.lg,
+      gap: coffeeSpacing.md,
+      backgroundColor: palette.backgroundSecondary,
+      ...coffeeShadow.soft,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: coffeeSpacing.md,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: palette.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backText: {
+      color: palette.textPrimary,
+      fontSize: 20,
+    },
+    headerTitle: {
+      color: palette.textPrimary,
+      ...coffeeTypography.heading,
+      fontSize: 24,
+    },
+    filtersRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: coffeeSpacing.sm,
+    },
+    filterChip: {
+      paddingHorizontal: coffeeSpacing.md,
+      paddingVertical: coffeeSpacing.xs,
+      borderRadius: 20,
+      backgroundColor: palette.overlay,
+    },
+    filterChipActive: {
+      backgroundColor: palette.accent,
+    },
+    filterText: {
+      color: palette.textPrimary,
+      ...coffeeTypography.paragraph,
+      fontWeight: '500',
+    },
+    filterTextActive: {
+      color: palette.onHeroText,
+    },
+    list: {
+      padding: coffeeSpacing.lg,
+      paddingBottom: coffeeSpacing.xxl * 1.5,
+    },
+    listEmpty: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    listSeparator: {
+      height: coffeeSpacing.md,
+    },
+    emptyState: {
+      alignItems: 'center',
+      gap: coffeeSpacing.sm,
+      padding: coffeeSpacing.xl,
+    },
+    emptyTitle: {
+      color: palette.accent,
+      ...coffeeTypography.subheading,
+      fontWeight: '700',
+    },
+    emptySubtitle: {
+      color: palette.textSecondary,
+      ...coffeeTypography.paragraph,
+      textAlign: 'center',
+    },
+    retryButton: {
+      marginTop: coffeeSpacing.md,
+      paddingHorizontal: coffeeSpacing.lg,
+      paddingVertical: coffeeSpacing.sm,
+      borderRadius: coffeeRadius.lg,
+      backgroundColor: palette.accent,
+    },
+    retryText: {
+      color: palette.onHeroText,
+      ...coffeeTypography.paragraph,
+      fontWeight: '600',
+    },
+    ctaBar: {
+      position: 'absolute',
+      bottom: coffeeSpacing.lg,
+      left: coffeeSpacing.lg,
+      right: coffeeSpacing.lg,
+    },
+  });
 
 

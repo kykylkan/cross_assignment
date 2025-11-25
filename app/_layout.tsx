@@ -2,9 +2,12 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { Provider as ReduxProvider } from 'react-redux';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { coffeeColors } from '@/constants/coffeeTheme';
+import { ThemeModeProvider } from '@/context/ThemeModeContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { store } from '@/store';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -39,8 +42,10 @@ export default function RootLayout() {
   };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : customTheme}>
-      <Stack
+    <ReduxProvider store={store}>
+      <ThemeModeProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : customTheme}>
+          <Stack
         screenOptions={{
           headerShown: true,
           headerStyle: {
@@ -51,7 +56,6 @@ export default function RootLayout() {
             fontWeight: '700',
             fontSize: 18,
           },
-          headerBackTitleVisible: false,
           headerShadowVisible: false,
           contentStyle: {
             backgroundColor: coffeeColors.backgroundBase,
@@ -112,8 +116,10 @@ export default function RootLayout() {
             title: 'Modal',
           }}
         />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ThemeModeProvider>
+    </ReduxProvider>
   );
 }

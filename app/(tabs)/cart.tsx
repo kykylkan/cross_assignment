@@ -1,22 +1,33 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/coffee/PrimaryButton';
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
 import { coffeeColors, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { removeItem, updateQuantity } from '@/store/cartSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 /**
  * Cart screen
  * Displays items added to cart and allows placing an order
  */
 export default function CartScreen() {
-  // Mock cart data (in a real app, this would be retrieved from state)
-  const cartItems: Array<{ id: string; title: string; price: number; quantity: number }> = [];
-
+  const cartItems = useAppSelector((state) => state.cart.items);
+  const dispatch = useAppDispatch();
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+
   const handleCheckout = () => {
-    // Order placement logic will be here
+    // Order placement logic will be here (integration with backend / payment gateway)
+  };
+
+  const handleQuantityChange = (id: string, delta: number) => {
+    const targetItem = cartItems.find((item) => item.id === id);
+    if (!targetItem) {
+      return;
+    }
+    dispatch(updateQuantity({ id, quantity: targetItem.quantity + delta }));
   };
 
   if (cartItems.length === 0) {
@@ -42,11 +53,24 @@ export default function CartScreen() {
           <View key={item.id} style={styles.cartItem}>
             <View style={styles.itemInfo}>
               <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemPrice}>
-                {item.price} UAH × {item.quantity}
-              </Text>
+              {item.optionsSummary ? <Text style={styles.itemMeta}>{item.optionsSummary}</Text> : null}
+              <Text style={styles.itemPrice}>{formatCurrency(item.price)} / cup</Text>
+              <View style={styles.quantityRow}>
+                <Pressable style={styles.quantityButton} onPress={() => handleQuantityChange(item.id, -1)}>
+                  <Feather name="minus" size={16} color={coffeeColors.brandPrimary} />
+                </Pressable>
+                <Text style={styles.quantityValue}>{item.quantity}</Text>
+                <Pressable style={styles.quantityButton} onPress={() => handleQuantityChange(item.id, 1)}>
+                  <Feather name="plus" size={16} color={coffeeColors.brandPrimary} />
+                </Pressable>
+              </View>
             </View>
-            <Text style={styles.itemTotal}>{item.price * item.quantity} UAH</Text>
+            <View style={styles.itemActions}>
+              <Text style={styles.itemTotal}>{formatCurrency(item.price * item.quantity)}</Text>
+              <Pressable style={styles.removeButton} onPress={() => dispatch(removeItem(item.id))}>
+                <Feather name="trash-2" size={16} color={coffeeColors.textSecondary} />
+              </Pressable>
+            </View>
           </View>
         ))}
       </View>
@@ -54,9 +78,9 @@ export default function CartScreen() {
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalPrice}>{totalPrice} UAH</Text>
+          <Text style={styles.totalPrice}>{formatCurrency(totalPrice)}</Text>
         </View>
-        <PrimaryButton title="Place Order" onPress={handleCheckout} />
+        <PrimaryButton title="Place Order" onPress={handleCheckout} disabled={cartItems.length === 0} />
       </View>
     </ScreenContainer>
   );
@@ -95,10 +119,44 @@ const styles = StyleSheet.create({
     color: coffeeColors.textSecondary,
     ...coffeeTypography.caption,
   },
+  itemMeta: {
+    color: coffeeColors.textSecondary,
+    ...coffeeTypography.caption,
+  },
   itemTotal: {
     color: coffeeColors.brandPrimary,
     ...coffeeTypography.subheading,
     fontWeight: '700',
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: coffeeSpacing.sm,
+    marginTop: coffeeSpacing.xs,
+  },
+  quantityButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: coffeeColors.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: coffeeColors.surfaceMuted,
+  },
+  quantityValue: {
+    ...coffeeTypography.subheading,
+    color: coffeeColors.brandPrimary,
+    fontWeight: '600',
+    minWidth: 24,
+    textAlign: 'center',
+  },
+  itemActions: {
+    alignItems: 'flex-end',
+    gap: coffeeSpacing.sm,
+  },
+  removeButton: {
+    padding: coffeeSpacing.xs,
   },
   footer: {
     gap: coffeeSpacing.md,

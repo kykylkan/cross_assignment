@@ -8,16 +8,19 @@ type PrimaryButtonProps = {
   onPress?: () => void;
   leading?: ReactNode;
   size?: 'default' | 'small';
+  disabled?: boolean;
 };
 
-export function PrimaryButton({ title, onPress, leading, size = 'default' }: PrimaryButtonProps) {
+export function PrimaryButton({ title, onPress, leading, size = 'default', disabled = false }: PrimaryButtonProps) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.button,
         size === 'small' && styles.buttonSmall,
-        pressed && styles.pressed,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
       ]}
       accessibilityRole="button">
       {leading}
@@ -54,6 +57,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });
 

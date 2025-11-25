@@ -10,14 +10,11 @@ import { QuantitySelector } from '@/components/coffee/QuantitySelector';
 import { SizeSelector } from '@/components/coffee/SizeSelector';
 import { SweetnessSelector } from '@/components/coffee/SweetnessSelector';
 import { SyrupSelector } from '@/components/coffee/SyrupSelector';
-import {
-  coffeeColors,
-  coffeeRadius,
-  coffeeShadow,
-  coffeeSpacing,
-  coffeeTypography,
-} from '@/constants/coffeeTheme';
+import { coffeeRadius, coffeeShadow, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import { ThemePalette, useThemeMode } from '@/context/ThemeModeContext';
 import { fetchPostById, Post } from '@/lib/api';
+import { addItem } from '@/store/cartSlice';
+import { useAppDispatch } from '@/store/hooks';
 
 const sizeOptions = [
   { id: 's', label: 'S', volume: '12 oz', priceModifier: 0 },
@@ -94,7 +91,10 @@ const mapPostToProduct = (post: Post): ProductData => {
  */
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const productId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  const { palette } = useThemeMode();
+  const dispatch = useAppDispatch();
 
   const [selectedSize, setSelectedSize] = useState('m');
   const [selectedMilk, setSelectedMilk] = useState('whole');
@@ -105,6 +105,7 @@ export default function ProductDetailsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const totalPrice = useMemo(() => {
     const basePrice = product?.basePrice ?? 0;
     const sizePrice = sizeOptions.find((s) => s.id === selectedSize)?.priceModifier || 0;
@@ -117,7 +118,7 @@ export default function ProductDetailsScreen() {
     let isMounted = true;
 
     const loadProduct = async () => {
-      if (!id) {
+      if (!productId) {
         setError('Product not found.');
         setProduct(null);
         setIsLoading(false);
@@ -127,7 +128,7 @@ export default function ProductDetailsScreen() {
       try {
         setIsLoading(true);
         setError(null);
-        const fetchedPost = await fetchPostById(Number(id));
+        const fetchedPost = await fetchPostById(Number(productId));
 
         if (!isMounted) {
           return;
@@ -157,12 +158,12 @@ export default function ProductDetailsScreen() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [productId]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={coffeeColors.brandPrimary} />
+        <ActivityIndicator size="large" color={palette.accent} />
         <Text style={styles.loadingText}>Loading product...</Text>
       </View>
     );
@@ -180,25 +181,35 @@ export default function ProductDetailsScreen() {
   if (!product) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Product with ID {id} not found</Text>
+        <Text style={styles.errorText}>Product with ID {productId} not found</Text>
         <PrimaryButton title="Go Back" onPress={() => router.back()} />
       </View>
     );
   }
 
   const handleAddToCart = () => {
-    // Cart addition logic will be here
-    console.log('Add to cart:', {
-      productId: id,
-      size: selectedSize,
-      milk: selectedMilk,
-      syrup: selectedSyrup,
-      sweetness: selectedSweetness,
-      quantity,
-      totalPrice,
-    });
-    // For demonstration, just go back
-    router.back();
+    if (!product || !productId) {
+      return;
+    }
+
+    const selectedSizeLabel = sizeOptions.find((s) => s.id === selectedSize)?.label ?? selectedSize.toUpperCase();
+    const selectedMilkLabel = milkOptions.find((m) => m.id === selectedMilk)?.label ?? selectedMilk;
+    const selectedSyrupLabel = syrupOptions.find((s) => s.id === selectedSyrup)?.label ?? selectedSyrup;
+    const optionsSummary = `${selectedSizeLabel} • ${selectedMilkLabel} • ${selectedSyrupLabel} • ${selectedSweetness}% sweet`;
+    const unitPrice = Number((totalPrice / quantity).toFixed(2));
+
+    dispatch(
+      addItem({
+        id: productId,
+        title: product.title,
+        price: unitPrice,
+        quantity,
+        imageUrl: product.imageUrl,
+        optionsSummary,
+      }),
+    );
+
+    router.push('/(tabs)/cart');
   };
 
   return (
@@ -222,10 +233,10 @@ export default function ProductDetailsScreen() {
           />
           <View style={styles.headerButtons}>
             <Pressable onPress={() => router.back()} style={styles.headerButton}>
-              <Feather name="chevron-left" size={16} color={coffeeColors.textPrimary} />
+              <Feather name="chevron-left" size={16} color={palette.textPrimary} />
             </Pressable>
             <Pressable style={styles.headerButton}>
-              <Feather name="heart" size={16} color={coffeeColors.textPrimary} />
+              <Feather name="heart" size={16} color={palette.textPrimary} />
             </Pressable>
           </View>
         </View>
@@ -288,7 +299,7 @@ export default function ProductDetailsScreen() {
 
       {/* Bottom CTA Bar */}
       <LinearGradient
-        colors={[coffeeColors.backgroundMiddle, coffeeColors.backgroundMiddle, 'transparent']}
+        colors={[palette.backgroundSecondary, palette.backgroundSecondary, 'transparent']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.ctaGradient}>
@@ -302,169 +313,170 @@ export default function ProductDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: coffeeColors.backgroundMiddle,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 384,
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imageGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  headerButtons: {
-    position: 'absolute',
-    top: 24,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: coffeeSpacing.lg,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...coffeeShadow.soft,
-  },
-  content: {
-    paddingHorizontal: coffeeSpacing.lg,
-    paddingTop: coffeeSpacing.lg,
-    paddingBottom: coffeeSpacing.xxl,
-    gap: coffeeSpacing.lg,
-  },
-  infoCard: {
-    backgroundColor: coffeeColors.surface,
-    borderRadius: coffeeRadius.lg,
-    padding: coffeeSpacing.lg,
-    gap: coffeeSpacing.sm,
-    ...coffeeShadow.soft,
-  },
-  productTitle: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.heading,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  productDescription: {
-    color: coffeeColors.textSecondary,
-    ...coffeeTypography.paragraph,
-    fontSize: 16,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    gap: coffeeSpacing.sm,
-    marginTop: coffeeSpacing.xs,
-  },
-  ratingBadge: {
-    paddingHorizontal: coffeeSpacing.sm,
-    paddingVertical: coffeeSpacing.xs,
-    borderRadius: 14,
-    backgroundColor: 'rgba(10, 107, 255, 0.2)',
-  },
-  ratingText: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.caption,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  availabilityBadge: {
-    paddingHorizontal: coffeeSpacing.sm,
-    paddingVertical: coffeeSpacing.xs,
-    borderRadius: 14,
-    backgroundColor: '#DCFFE7',
-  },
-  availabilityText: {
-    color: '#008235',
-    ...coffeeTypography.caption,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  sectionCard: {
-    backgroundColor: coffeeColors.surface,
-    borderRadius: coffeeRadius.lg,
-    padding: coffeeSpacing.lg,
-    gap: coffeeSpacing.md,
-    ...coffeeShadow.soft,
-  },
-  sectionTitle: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.subheading,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  ctaGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: coffeeSpacing.xl,
-    paddingBottom: coffeeSpacing.lg,
-    paddingHorizontal: coffeeSpacing.lg,
-  },
-  ctaBar: {
-    paddingTop: coffeeSpacing.lg,
-    paddingBottom: coffeeSpacing.md,
-  },
-  addToCartButton: {
-    backgroundColor: coffeeColors.brandPrimary,
-    borderRadius: 16,
-    paddingVertical: coffeeSpacing.md,
-    paddingHorizontal: coffeeSpacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  addToCartText: {
-    color: coffeeColors.backgroundBase,
-    ...coffeeTypography.subheading,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: coffeeSpacing.lg,
-    padding: coffeeSpacing.xl,
-    backgroundColor: coffeeColors.backgroundBase,
-  },
-  errorText: {
-    color: coffeeColors.textSecondary,
-    ...coffeeTypography.paragraph,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: coffeeSpacing.md,
-    padding: coffeeSpacing.xl,
-    backgroundColor: coffeeColors.backgroundBase,
-  },
-  loadingText: {
-    color: coffeeColors.textSecondary,
-    ...coffeeTypography.paragraph,
-  },
-});
+const createStyles = (palette: ThemePalette) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: palette.backgroundPrimary,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    imageContainer: {
+      width: '100%',
+      height: 384,
+      position: 'relative',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+    },
+    imageGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    headerButtons: {
+      position: 'absolute',
+      top: 24,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: coffeeSpacing.lg,
+    },
+    headerButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: palette.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...coffeeShadow.soft,
+    },
+    content: {
+      paddingHorizontal: coffeeSpacing.lg,
+      paddingTop: coffeeSpacing.lg,
+      paddingBottom: coffeeSpacing.xxl,
+      gap: coffeeSpacing.lg,
+    },
+    infoCard: {
+      backgroundColor: palette.card,
+      borderRadius: coffeeRadius.lg,
+      padding: coffeeSpacing.lg,
+      gap: coffeeSpacing.sm,
+      ...coffeeShadow.soft,
+    },
+    productTitle: {
+      color: palette.accent,
+      ...coffeeTypography.heading,
+      fontSize: 24,
+      fontWeight: '700',
+    },
+    productDescription: {
+      color: palette.textSecondary,
+      ...coffeeTypography.paragraph,
+      fontSize: 16,
+    },
+    badgesRow: {
+      flexDirection: 'row',
+      gap: coffeeSpacing.sm,
+      marginTop: coffeeSpacing.xs,
+    },
+    ratingBadge: {
+      paddingHorizontal: coffeeSpacing.sm,
+      paddingVertical: coffeeSpacing.xs,
+      borderRadius: 14,
+      backgroundColor: palette.overlay,
+    },
+    ratingText: {
+      color: palette.accent,
+      ...coffeeTypography.caption,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    availabilityBadge: {
+      paddingHorizontal: coffeeSpacing.sm,
+      paddingVertical: coffeeSpacing.xs,
+      borderRadius: 14,
+      backgroundColor: 'rgba(0, 130, 53, 0.15)',
+    },
+    availabilityText: {
+      color: '#008235',
+      ...coffeeTypography.caption,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    sectionCard: {
+      backgroundColor: palette.card,
+      borderRadius: coffeeRadius.lg,
+      padding: coffeeSpacing.lg,
+      gap: coffeeSpacing.md,
+      ...coffeeShadow.soft,
+    },
+    sectionTitle: {
+      color: palette.textPrimary,
+      ...coffeeTypography.subheading,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    ctaGradient: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingTop: coffeeSpacing.xl,
+      paddingBottom: coffeeSpacing.lg,
+      paddingHorizontal: coffeeSpacing.lg,
+    },
+    ctaBar: {
+      paddingTop: coffeeSpacing.lg,
+      paddingBottom: coffeeSpacing.md,
+    },
+    addToCartButton: {
+      backgroundColor: palette.accent,
+      borderRadius: 16,
+      paddingVertical: coffeeSpacing.md,
+      paddingHorizontal: coffeeSpacing.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 8,
+    },
+    addToCartText: {
+      color: palette.onHeroText,
+      ...coffeeTypography.subheading,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    errorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: coffeeSpacing.lg,
+      padding: coffeeSpacing.xl,
+      backgroundColor: palette.backgroundSecondary,
+    },
+    errorText: {
+      color: palette.textSecondary,
+      ...coffeeTypography.paragraph,
+      textAlign: 'center',
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: coffeeSpacing.md,
+      padding: coffeeSpacing.xl,
+      backgroundColor: palette.backgroundSecondary,
+    },
+    loadingText: {
+      color: palette.textSecondary,
+      ...coffeeTypography.paragraph,
+    },
+  });

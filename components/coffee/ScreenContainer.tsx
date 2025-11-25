@@ -3,6 +3,7 @@ import { Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { coffeeColors, coffeeLayout, coffeeSpacing } from '@/constants/coffeeTheme';
+import { useThemeMode } from '@/context/ThemeModeContext';
 
 type ScreenContainerProps = {
   children: ReactNode;
@@ -13,11 +14,12 @@ type ScreenContainerProps = {
 export function ScreenContainer({ children, withPadding = true, centerContent = false }: ScreenContainerProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { palette } = useThemeMode();
   const contentWidth = Math.min(width - coffeeSpacing.lg * 2, coffeeLayout.maxContentWidth);
   const topInsetPadding = Math.max(insets.top, coffeeSpacing.xl);
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: palette.backgroundPrimary }]}>
       {/*<View style={styles.backgroundTop} />*/}
       <ScrollView
         contentContainerStyle={[
@@ -32,7 +34,14 @@ export function ScreenContainer({ children, withPadding = true, centerContent = 
         ]}
         bounces={false}
         showsVerticalScrollIndicator={false}>
-        <View style={[styles.inner, { width: contentWidth }, centerContent && styles.innerCentered]}>{children}</View>
+        <View
+          style={[
+            styles.inner,
+            { width: contentWidth, backgroundColor: palette.backgroundSecondary, borderRadius: 24 },
+            centerContent && styles.innerCentered,
+          ]}>
+          {children}
+        </View>
       </ScrollView>
     </View>
   );

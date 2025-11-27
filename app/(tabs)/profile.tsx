@@ -1,137 +1,446 @@
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, type Href } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { OutlineButton } from '@/components/coffee/OutlineButton';
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
-import { coffeeColors, coffeeRadius, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
+import {
+  coffeeColors,
+  coffeeRadius,
+  coffeeShadow,
+  coffeeSpacing,
+  coffeeTypography,
+} from '@/constants/coffeeTheme';
 
-/**
- * User profile screen
- * Displays user information and provides access to settings
- */
 export default function ProfileScreen() {
   const router = useRouter();
+  const [pushEnabled, setPushEnabled] = useState(true);
 
-  // Mock user data
   const user = {
     name: 'Alexander',
     email: 'alex@example.com',
+    phone: '+1 234 567 8900',
   };
 
-  const menuItems = [
+  const stats = [
+    { id: 'orders', label: 'Orders', value: '24' },
+    { id: 'points', label: 'Points', value: '350' },
+    { id: 'savings', label: 'Saved', value: '$120' },
+  ];
+
+  const personalFields = [
+    { id: 'fullName', label: 'Full Name', value: user.name },
+    { id: 'email', label: 'Email', value: user.email },
+    { id: 'phone', label: 'Phone', value: user.phone },
+  ];
+
+  const quickShortcuts: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: any;
+    iconBg: string;
+    iconColor: string;
+    route?: Href;
+  }> = [
     {
-      id: 'settings',
-      title: 'Settings',
-      icon: <Feather name="settings" size={20} color={coffeeColors.brandPrimary} />,
-      onPress: () => router.push('/settings'),
+      id: 'addresses',
+      title: 'Saved Addresses',
+      description: 'Manage delivery locations',
+      icon: 'map-pin',
+      iconBg: '#FDF0CC',
+      iconColor: '#E26A00',
+      route: '/settings',
     },
     {
-      id: 'support',
-      title: 'Support',
-      icon: <Feather name="help-circle" size={20} color={coffeeColors.brandPrimary} />,
-      onPress: () => router.push('/support'),
+      id: 'payments',
+      title: 'Payment Methods',
+      description: 'Manage cards and wallets',
+      icon: 'credit-card',
+      iconBg: '#E4F0FF',
+      iconColor: '#1573FF',
+      route: '/settings',
     },
     {
-      id: 'about',
-      title: 'About',
-      icon: <Feather name="info" size={20} color={coffeeColors.brandPrimary} />,
-      onPress: () => router.push('/about'),
+      id: 'rewards',
+      title: 'Rewards & Offers',
+      description: 'View available discounts',
+      icon: 'gift',
+      iconBg: '#DFFCE7',
+      iconColor: '#1C8B45',
+      route: '/orders',
     },
   ];
 
+  const supportAndPrefs: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: any;
+    iconBg: string;
+    iconColor: string;
+    type?: 'toggle';
+    route?: Href;
+  }> = [
+    {
+      id: 'notifications',
+      title: 'Push Notifications',
+      description: 'Order updates and offers',
+      icon: 'bell',
+      iconBg: '#F1E4FF',
+      iconColor: '#871BFF',
+      type: 'toggle' as const,
+    },
+    {
+      id: 'preferences',
+      title: 'Preferences',
+      description: 'Customize your experience',
+      icon: 'sliders',
+      iconBg: '#FFE6D6',
+      iconColor: '#FF5A1F',
+      route: '/settings',
+    },
+    {
+      id: 'support',
+      title: 'Help & Support',
+      description: 'FAQ and contact us',
+      icon: 'life-buoy',
+      iconBg: '#E4EBFF',
+      iconColor: '#3F51B5',
+      route: '/support',
+    },
+  ];
+
+  const navigateTo = (path?: Href) => () => {
+    if (path) {
+      router.push(path);
+    }
+  };
+
   return (
-    <ScreenContainer>
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Feather name="user" size={40} color={coffeeColors.brandPrimary} />
-        </View>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-      </View>
+    <ScreenContainer withPadding={false}>
+      <View style={styles.content}>
+        <LinearGradient
+          colors={['#0070FD', '#2B91FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <Text style={styles.heroTitle}>Profile</Text>
+            <Pressable style={styles.heroSettings} onPress={navigateTo('/settings')} accessibilityRole="button">
+              <Feather name="settings" size={18} color="#FFFFFF" />
+            </Pressable>
+          </View>
 
-      <View style={styles.menu}>
-        {menuItems.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={item.onPress}
-            style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
-            accessibilityRole="button">
-            <View style={styles.menuItemContent}>
-              <View style={styles.menuItemIcon}>{item.icon}</View>
-              <Text style={styles.menuItemTitle}>{item.title}</Text>
+          <View style={styles.profileRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitial}>{user.name.charAt(0)}</Text>
+              <Pressable style={styles.avatarEdit} hitSlop={12}>
+                <Feather name="camera" size={14} color={coffeeColors.brandPrimary} />
+              </Pressable>
             </View>
-            <Feather name="chevron-right" size={20} color={coffeeColors.textSecondary} />
-          </Pressable>
-        ))}
-      </View>
 
-      <View style={styles.footer}>
-        <OutlineButton title="Sign Out" onPress={() => {}} />
+            <View style={styles.userMeta}>
+              <Text style={styles.userName}>{user.name}</Text>
+              <Text style={styles.userEmail}>{user.email}</Text>
+            </View>
+
+            <Pressable
+              style={styles.heroAction}
+              onPress={navigateTo('/settings')}
+              accessibilityRole="button">
+              <Feather name="edit-3" size={16} color={coffeeColors.brandPrimary} />
+              <Text style={styles.heroActionText}>Edit</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.statsRow}>
+            {stats.map((stat, index) => (
+              <View
+                key={stat.id}
+                style={[styles.statCard, index < stats.length - 1 && styles.statDivider]}>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        </LinearGradient>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Personal Information</Text>
+            <Pressable style={styles.cardAction} onPress={navigateTo('/settings')}>
+              <Feather name="edit-3" size={16} color={coffeeColors.brandPrimary} />
+              <Text style={styles.cardActionText}>Edit</Text>
+            </Pressable>
+          </View>
+          {personalFields.map((field, index) => (
+            <View key={field.id} style={[styles.fieldRow, index < personalFields.length - 1 && styles.rowDivider]}>
+              <Text style={styles.fieldLabel}>{field.label}</Text>
+              <Text style={styles.fieldValue}>{field.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.card}>
+          {quickShortcuts.map((shortcut, index) => (
+            <Pressable
+              key={shortcut.id}
+              style={[styles.row, index < quickShortcuts.length - 1 && styles.rowDivider]}
+              onPress={navigateTo(shortcut.route)}
+              accessibilityRole={shortcut.route ? 'button' : undefined}>
+              <View style={[styles.rowIcon, { backgroundColor: shortcut.iconBg }]}>
+                <Feather name={shortcut.icon as any} size={18} color={shortcut.iconColor} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{shortcut.title}</Text>
+                <Text style={styles.rowSubtitle}>{shortcut.description}</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={coffeeColors.textSecondary} />
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.card}>
+          {supportAndPrefs.map((item, index) => (
+            <View key={item.id} style={[styles.row, index < supportAndPrefs.length - 1 && styles.rowDivider]}>
+              <View style={[styles.rowIcon, { backgroundColor: item.iconBg }]}>
+                <Feather name={item.icon as any} size={18} color={item.iconColor} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{item.title}</Text>
+                <Text style={styles.rowSubtitle}>{item.description}</Text>
+              </View>
+              {item.type === 'toggle' ? (
+                <Switch
+                  value={pushEnabled}
+                  onValueChange={setPushEnabled}
+                  trackColor={{ false: '#D7DBE8', true: '#0A6BFF' }}
+                  thumbColor="#FFFFFF"
+                />
+              ) : (
+                <Pressable onPress={navigateTo(item.route)} accessibilityRole="button">
+                  <Feather name="chevron-right" size={18} color={coffeeColors.textSecondary} />
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
+
+        <Pressable style={styles.signOutButton} onPress={() => {}} accessibilityRole="button">
+          <Feather name="log-out" size={18} color="#D7263D" />
+          <Text style={styles.signOutText}>Log Out</Text>
+        </Pressable>
+
+        <Text style={styles.versionLabel}>CoffeeGo v1.0.0</Text>
       </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    marginBottom: coffeeSpacing.xl,
-    gap: coffeeSpacing.md,
+  content: {
+    width: '100%',
+    padding: coffeeSpacing.lg,
+    gap: coffeeSpacing.lg,
   },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: coffeeColors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: coffeeColors.brandPrimary,
+  heroCard: {
+    borderRadius: coffeeRadius.lg,
+    padding: coffeeSpacing.lg,
+    ...coffeeShadow.card,
+    gap: coffeeSpacing.lg,
   },
-  name: {
-    color: coffeeColors.brandPrimary,
-    ...coffeeTypography.heading,
-  },
-  email: {
-    color: coffeeColors.textSecondary,
-    ...coffeeTypography.paragraph,
-  },
-  menu: {
-    gap: coffeeSpacing.sm,
-    marginBottom: coffeeSpacing.xl,
-  },
-  menuItem: {
+  heroHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: coffeeSpacing.md,
-    backgroundColor: coffeeColors.surface,
-    borderRadius: coffeeRadius.md,
+    alignItems: 'center',
   },
-  menuItemPressed: {
-    opacity: 0.7,
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
   },
-  menuItemContent: {
+  heroSettings: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: coffeeSpacing.md,
   },
-  menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: coffeeRadius.sm,
-    backgroundColor: coffeeColors.surfaceMuted,
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-  menuItemTitle: {
+  avatarInitial: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  avatarEdit: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...coffeeShadow.soft,
+  },
+  userMeta: {
+    flex: 1,
+  },
+  userName: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  userEmail: {
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  heroAction: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: coffeeSpacing.md,
+    height: 40,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: coffeeSpacing.xs,
+    ...coffeeShadow.soft,
+  },
+  heroActionText: {
+    color: coffeeColors.brandPrimary,
+    fontWeight: '600',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: coffeeRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  statCard: {
+    flex: 1,
+    paddingVertical: coffeeSpacing.md,
+    alignItems: 'center',
+  },
+  statDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: 'rgba(255,255,255,0.3)',
+  },
+  statValue: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: coffeeColors.surface,
+    borderRadius: coffeeRadius.lg,
+    padding: coffeeSpacing.lg,
+    gap: coffeeSpacing.md,
+    ...coffeeShadow.card,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    color: coffeeColors.brandPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  cardAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: coffeeSpacing.xs,
+  },
+  cardActionText: {
+    color: coffeeColors.brandPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fieldRow: {
+    gap: 6,
+  },
+  fieldLabel: {
+    color: coffeeColors.brandPrimary,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fieldValue: {
     color: coffeeColors.textPrimary,
     ...coffeeTypography.subheading,
-    fontWeight: '500',
   },
-  footer: {
-    marginTop: 'auto',
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: coffeeSpacing.md,
+    paddingVertical: coffeeSpacing.sm,
+  },
+  rowIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: coffeeRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowTitle: {
+    color: coffeeColors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  rowSubtitle: {
+    color: coffeeColors.textSecondary,
+    marginTop: 2,
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: coffeeColors.surfaceBorder,
+  },
+  signOutButton: {
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: '#FFD0D5',
+    backgroundColor: '#F8F5FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: coffeeSpacing.sm,
+  },
+  signOutText: {
+    color: '#D7263D',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  versionLabel: {
+    color: coffeeColors.textSecondary,
+    textAlign: 'center',
   },
 });
 

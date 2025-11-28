@@ -1,8 +1,18 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Image,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  UIManager,
+  View,
+} from 'react-native';
 
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
 import {
@@ -12,7 +22,7 @@ import {
   coffeeSpacing,
   coffeeTypography,
 } from '@/constants/coffeeTheme';
-import { removeItem, updateQuantity } from '@/store/cartSlice';
+import { CartItem, removeItem, updateQuantity } from '@/store/cartSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 const productImages = [
@@ -46,6 +56,8 @@ const deliveryOptions = [
   },
 ];
 
+type CartItemWithImage = CartItem & { image: string };
+
 export default function CartScreen() {
   const cartItems = useAppSelector((state) => state.cart.items);
   const dispatch = useAppDispatch();
@@ -66,18 +78,77 @@ export default function CartScreen() {
   const discount = appliedPromo === 'COFFEE10' ? subtotal * 0.1 : 0;
   const total = Math.max(subtotal + tax + deliveryFee - discount, 0);
 
-  const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
+  const formatCurrency = useCallback((value: number) => `$${value.toFixed(2)}`, []);
 
-  const handleQuantityChange = (id: string, delta: number) => {
-    const targetItem = cartItems.find((item) => item.id === id);
-    if (!targetItem) return;
-    const newQuantity = targetItem.quantity + delta;
-    if (newQuantity <= 0) {
-      dispatch(removeItem(id));
-      return;
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
     }
-    dispatch(updateQuantity({ id, quantity: newQuantity }));
-  };
+  }, []);
+
+  const triggerLayoutAnimation = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, []);
+
+  const handleQuantityChange = useCallback(
+    (id: string, delta: number) => {
+      const targetItem = cartItems.find((item) => item.id === id);
+      if (!targetItem) return;
+      const newQuantity = targetItem.quantity + delta;
+      if (newQuantity <= 0) {
+        dispatch(removeItem(id));
+        return;
+      }
+      dispatch(updateQuantity({ id, quantity: newQuantity }));
+    },
+    [cartItems, dispatch],
+  );
+
+  const handleIncrement = useCallback(
+    (id: string) => {
+      handleQuantityChange(id, 1);
+    },
+    [handleQuantityChange],
+  );
+
+  const handleDecrement = useCallback(
+    (id: string) => {
+      handleQuantityChange(id, -1);
+    },
+    [handleQuantityChange],
+  );
+
+  const handleRemove = useCallback(
+    (id: string) => {
+      dispatch(removeItem(id));
+    },
+    [dispatch],
+  );
+
+  const handleDeliverySelect = useCallback(
+    (id: 'pickup' | 'delivery') => {
+      triggerLayoutAnimation();
+      setDeliveryType(id);
+    },
+    [triggerLayoutAnimation],
+  );
+
+  const handlePaymentSelect = useCallback(
+    (id: string) => {
+      triggerLayoutAnimation();
+      setSelectedPayment(id);
+    },
+    [triggerLayoutAnimation],
+  );
+
+  const cartItemsWithImages = useMemo<CartItemWithImage[]>(
+    () =>
+      cartItems.map((item, index) => ({
+        ...item,
+        image: item.imageUrl ?? productImages[index % productImages.length],
+      })),
+    [cartItems],
+  );
 
   const handleApplyPromo = () => {
     if (promoCode.trim().toUpperCase() === 'COFFEE10') {
@@ -105,52 +176,26 @@ export default function CartScreen() {
 
   return (
     <ScreenContainer withPadding={false}>
+      <View style={styles.header}>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Feather name='chevron-left' size={20} color={coffeeColors.textPrimary} />
+        </Pressable>
+        <Text style={styles.title}>Кошик ({cartItems.length})</Text>
+      </View>
+
       <View style={styles.content}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Feather name='chevron-left' size={20} color={coffeeColors.textPrimary} />
-          </Pressable>
-          <Text style={styles.title}>Кошик ({cartItems.length})</Text>
-        </View>
+
 
         <View style={styles.sectionStack}>
-          {cartItems.map((item, index) => (
-            <View key={item.id} style={styles.itemCard}>
-              <Image
-                source={{ uri: productImages[index % productImages.length] }}
-                style={styles.itemImage}
-              />
-              <View style={styles.itemContent}>
-                <View style={styles.itemHeader}>
-                  <View>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    {item.optionsSummary ? (
-                      <Text style={styles.itemMeta}>{item.optionsSummary}</Text>
-                    ) : null}
-                    <Text style={styles.itemMeta}>100% sweetness · Medium</Text>
-                  </View>
-                  <Pressable style={styles.removeBadge} onPress={() => dispatch(removeItem(item.id))}>
-                    <Feather name='trash-2' size={14} color='#F03D5C' />
-                  </Pressable>
-                </View>
-                <View style={styles.itemFooter}>
-                  <View style={styles.quantityControl}>
-                    <Pressable
-                      style={styles.quantityButton}
-                      onPress={() => handleQuantityChange(item.id, -1)}>
-                      <Feather name='minus' size={16} color={coffeeColors.brandPrimary} />
-                    </Pressable>
-                    <Text style={styles.quantityValue}>{item.quantity}</Text>
-                    <Pressable
-                      style={styles.quantityButton}
-                      onPress={() => handleQuantityChange(item.id, 1)}>
-                      <Feather name='plus' size={16} color={coffeeColors.brandPrimary} />
-                    </Pressable>
-                  </View>
-                  <Text style={styles.itemTotal}>{formatCurrency(item.price * item.quantity)}</Text>
-                </View>
-              </View>
-            </View>
+          {cartItemsWithImages.map((item) => (
+            <CartItemRow
+              key={item.id}
+              item={item}
+              onIncrement={handleIncrement}
+              onDecrement={handleDecrement}
+              onRemove={handleRemove}
+              formatCurrency={formatCurrency}
+            />
           ))}
         </View>
 
@@ -167,7 +212,7 @@ export default function CartScreen() {
                     styles.optionRow,
                     isActive ? styles.optionActive : styles.optionIdle,
                   ]}
-                  onPress={() => setDeliveryType(option.id as 'pickup' | 'delivery')}>
+                  onPress={() => handleDeliverySelect(option.id as 'pickup' | 'delivery')}>
                   <View style={[styles.optionIcon, isActive && styles.optionIconActive]}>
                     <Feather
                       name={option.icon as any}
@@ -189,7 +234,7 @@ export default function CartScreen() {
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Промокод</Text>
+          <Text style={styles.sectionTitle}>Promo code</Text>
           <View style={styles.cardDivider} />
           <View style={styles.promoRow}>
             <View style={styles.promoInputWrapper}>
@@ -197,13 +242,13 @@ export default function CartScreen() {
               <TextInput
                 value={promoCode}
                 onChangeText={setPromoCode}
-                placeholder='Введіть код (спробуйте COFFEE10)'
+                placeholder='Enter the code (спробуйте COFFEE10)'
                 placeholderTextColor={coffeeColors.textSecondary}
                 style={styles.promoInput}
               />
             </View>
             <Pressable style={styles.promoButton} onPress={handleApplyPromo}>
-              <Text style={styles.promoButtonText}>Застосувати</Text>
+              <Text style={styles.promoButtonText}>Apply</Text>
             </Pressable>
           </View>
           {appliedPromo === null && promoCode !== '' ? (
@@ -224,7 +269,7 @@ export default function CartScreen() {
                 <Pressable
                   key={option.id}
                   style={[styles.paymentRow, isSelected && styles.optionActive]}
-                  onPress={() => setSelectedPayment(option.id)}>
+                  onPress={() => handlePaymentSelect(option.id)}>
                   <View
                     style={[
                       styles.paymentIcon,
@@ -249,28 +294,28 @@ export default function CartScreen() {
         </View>
 
         <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Підсумок</Text>
+          <Text style={styles.sectionTitle}>Total</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Сума</Text>
+            <Text style={styles.summaryLabel}>Sum</Text>
             <Text style={styles.summaryValue}>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Податок</Text>
+            <Text style={styles.summaryLabel}>Tax</Text>
             <Text style={styles.summaryValue}>{formatCurrency(tax)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Доставка</Text>
+            <Text style={styles.summaryLabel}>Delivery</Text>
             <Text style={styles.summaryValue}>{deliveryFee === 0 ? 'free' : formatCurrency(deliveryFee)}</Text>
           </View>
           {discount > 0 ? (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Знижка</Text>
+              <Text style={styles.summaryLabel}>Discount</Text>
               <Text style={[styles.summaryValue, styles.discountValue]}>- {formatCurrency(discount)}</Text>
             </View>
           ) : null}
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.totalLabel}>До сплати</Text>
+            <Text style={styles.totalLabel}>Pay</Text>
             <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
           </View>
 
@@ -286,10 +331,59 @@ export default function CartScreen() {
   );
 }
 
+type CartItemRowProps = {
+  item: CartItemWithImage;
+  onIncrement: (id: string) => void;
+  onDecrement: (id: string) => void;
+  onRemove: (id: string) => void;
+  formatCurrency: (value: number) => string;
+};
+
+const CartItemRow = memo(({ item, onIncrement, onDecrement, onRemove, formatCurrency }: CartItemRowProps) => {
+  const increment = useCallback(() => onIncrement(item.id), [item.id, onIncrement]);
+  const decrement = useCallback(() => onDecrement(item.id), [item.id, onDecrement]);
+  const remove = useCallback(() => onRemove(item.id), [item.id, onRemove]);
+  if (__DEV__) {
+    // eslint-disable-next-line no-console
+    console.count(`CartItemRow render – ${item.id}`);
+  }
+
+  return (
+    <View style={styles.itemCard}>
+      <Image source={{ uri: item.image }} style={styles.itemImage} />
+      <View style={styles.itemContent}>
+        <View style={styles.itemHeader}>
+          <View>
+            <Text style={styles.itemTitle}>{item.title}</Text>
+            {item.optionsSummary ? <Text style={styles.itemMeta}>{item.optionsSummary}</Text> : null}
+            <Text style={styles.itemMeta}>100% sweetness · Medium</Text>
+          </View>
+          <Pressable style={styles.removeBadge} onPress={remove}>
+            <Feather name='trash-2' size={14} color='#F03D5C' />
+          </Pressable>
+        </View>
+        <View style={styles.itemFooter}>
+          <View style={styles.quantityControl}>
+            <Pressable style={styles.quantityButton} onPress={decrement}>
+              <Feather name='minus' size={16} color={coffeeColors.brandPrimary} />
+            </Pressable>
+            <Text style={styles.quantityValue}>{item.quantity}</Text>
+            <Pressable style={styles.quantityButton} onPress={increment}>
+              <Feather name='plus' size={16} color={coffeeColors.brandPrimary} />
+            </Pressable>
+          </View>
+          <Text style={styles.itemTotal}>{formatCurrency(item.price * item.quantity)}</Text>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+CartItemRow.displayName = 'CartItemRow';
+
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    padding: coffeeSpacing.lg,
     gap: coffeeSpacing.lg,
   },
   header: {
@@ -350,6 +444,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFE1E7',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'absolute',
+    right: 0
   },
   itemFooter: {
     flexDirection: 'row',

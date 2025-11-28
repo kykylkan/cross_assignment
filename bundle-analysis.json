@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2025-11-27T00:00:00Z",
+  "command": "npx expo export --dump-sourcemap --output-dir dist-export",
+  "bundles": {
+    "iosHermes": {
+      "file": "_expo/static/js/ios/entry-4ea34c7b5dce0ad76addaf152c5b364e.hbc",
+      "sizeBytes": 2976064
+    },
+    "androidHermes": {
+      "file": "_expo/static/js/android/entry-d4c69312adc1723f6c57664a16028dac.hbc",
+      "sizeBytes": 2969600
+    },
+    "web": {
+      "file": "_expo/static/js/web/entry-fe00a9ff7bf67cd42ec62b7abf755c8c.js",
+      "sizeBytes": 2555904
+    }
+  },
+  "notes": [
+    "Package react-native-worklets (≈0.66 MB unpacked) removed; string is absent from generated source maps.",
+    "source-map-explorer could not parse Metro source maps due to Infinity column bug, logged in terminal."
+  ]
+}

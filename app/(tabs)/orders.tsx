@@ -162,7 +162,6 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    padding: coffeeSpacing.lg,
     gap: coffeeSpacing.lg,
   },
   headerCard: {

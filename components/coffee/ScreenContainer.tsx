@@ -19,7 +19,7 @@ export function ScreenContainer({ children, withPadding = true, centerContent = 
   const topInsetPadding = Math.max(insets.top, coffeeSpacing.xl);
 
   return (
-    <View style={[styles.root, {  }]}>
+    <View style={[styles.root, { backgroundColor: palette.backgroundPrimary }]}>
       {/*<View style={styles.backgroundTop} />*/}
       <ScrollView
         contentContainerStyle={[

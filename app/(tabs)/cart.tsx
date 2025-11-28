@@ -1,18 +1,22 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
   Image,
-  LayoutAnimation,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   View,
 } from 'react-native';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
 import {
@@ -80,16 +84,6 @@ export default function CartScreen() {
 
   const formatCurrency = useCallback((value: number) => `$${value.toFixed(2)}`, []);
 
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
-
-  const triggerLayoutAnimation = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, []);
-
   const handleQuantityChange = useCallback(
     (id: string, delta: number) => {
       const targetItem = cartItems.find((item) => item.id === id);
@@ -125,21 +119,13 @@ export default function CartScreen() {
     [dispatch],
   );
 
-  const handleDeliverySelect = useCallback(
-    (id: 'pickup' | 'delivery') => {
-      triggerLayoutAnimation();
-      setDeliveryType(id);
-    },
-    [triggerLayoutAnimation],
-  );
+  const handleDeliverySelect = useCallback((id: 'pickup' | 'delivery') => {
+    setDeliveryType(id);
+  }, []);
 
-  const handlePaymentSelect = useCallback(
-    (id: string) => {
-      triggerLayoutAnimation();
-      setSelectedPayment(id);
-    },
-    [triggerLayoutAnimation],
-  );
+  const handlePaymentSelect = useCallback((id: string) => {
+    setSelectedPayment(id);
+  }, []);
 
   const cartItemsWithImages = useMemo<CartItemWithImage[]>(
     () =>
@@ -206,28 +192,19 @@ export default function CartScreen() {
             {deliveryOptions.map((option) => {
               const isActive = option.id === deliveryType;
               return (
-                <Pressable
+                <AnimatedDeliveryOption
                   key={option.id}
-                  style={[
-                    styles.optionRow,
-                    isActive ? styles.optionActive : styles.optionIdle,
-                  ]}
-                  onPress={() => handleDeliverySelect(option.id as 'pickup' | 'delivery')}>
-                  <View style={[styles.optionIcon, isActive && styles.optionIconActive]}>
-                    <Feather
-                      name={option.icon as any}
-                      size={18}
-                      color={isActive ? coffeeColors.brandPrimary : coffeeColors.textSecondary}
-                    />
-                  </View>
-                  <View style={styles.optionText}>
-                    <Text style={styles.optionTitle}>{option.title}</Text>
-                    <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
-                  </View>
-                  <Text style={[styles.optionBadge, isActive && styles.optionBadgeActive]}>
-                    {option.badge}
-                  </Text>
-                </Pressable>
+                  id={option.id}
+                  title={option.title}
+                  subtitle={option.subtitle}
+                  badge={option.badge}
+                  icon={option.icon}
+                  isActive={isActive}
+                  onPress={() => handleDeliverySelect(option.id as 'pickup' | 'delivery')}
+                  style={[styles.optionRow, styles.optionIdle]}
+                  iconStyle={styles.optionIcon}
+                  badgeStyle={styles.optionBadge}
+                />
               );
             })}
           </View>
@@ -266,28 +243,22 @@ export default function CartScreen() {
             {paymentOptions.map((option) => {
               const isSelected = option.id === selectedPayment;
               return (
-                <Pressable
+                <AnimatedPaymentOption
                   key={option.id}
-                  style={[styles.paymentRow, isSelected && styles.optionActive]}
-                  onPress={() => handlePaymentSelect(option.id)}>
-                  <View
-                    style={[
-                      styles.paymentIcon,
-                      option.id === 'apple' && styles.appleIcon,
-                      option.id === 'google' && styles.googleIcon,
-                      option.id === 'card' && styles.cardIcon,
-                    ]}
-                  />
-                  <View style={styles.optionText}>
-                    <Text style={styles.optionTitle}>{option.title}</Text>
-                    <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
-                  </View>
-                  {isSelected ? (
-                    <Feather name='check-circle' size={18} color={coffeeColors.brandPrimary} />
-                  ) : (
-                    <Feather name='circle' size={18} color={coffeeColors.surfaceBorder} />
-                  )}
-                </Pressable>
+                  id={option.id}
+                  title={option.title}
+                  subtitle={option.subtitle}
+                  icon={option.icon}
+                  isSelected={isSelected}
+                  onPress={() => handlePaymentSelect(option.id)}
+                  style={[styles.paymentRow, !isSelected && styles.optionIdle]}
+                  iconStyle={[
+                    styles.paymentIcon,
+                    option.id === 'apple' && styles.appleIcon,
+                    option.id === 'google' && styles.googleIcon,
+                    option.id === 'card' && styles.cardIcon,
+                  ]}
+                />
               );
             })}
           </View>
@@ -331,6 +302,143 @@ export default function CartScreen() {
   );
 }
 
+type AnimatedOptionProps = {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge?: string;
+  icon: string;
+  isActive: boolean;
+  onPress: () => void;
+  style?: any;
+  iconStyle?: any;
+  badgeStyle?: any;
+};
+
+const AnimatedDeliveryOption = memo(({ id, title, subtitle, badge, icon, isActive, onPress, style, iconStyle, badgeStyle }: AnimatedOptionProps) => {
+  const progress = useSharedValue(isActive ? 1 : 0);
+  const scale = useSharedValue(isActive ? 1.02 : 1);
+  const borderWidth = useSharedValue(isActive ? 2 : 1);
+
+  React.useEffect(() => {
+    progress.value = withSpring(isActive ? 1 : 0, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(isActive ? 1.02 : 1, { damping: 15, stiffness: 200 });
+    borderWidth.value = withTiming(isActive ? 2 : 1, { duration: 200 });
+  }, [isActive, progress, scale, borderWidth]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [coffeeColors.surface, '#E6F2FF'],
+    );
+    const borderColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [coffeeColors.surfaceBorder, coffeeColors.brandPrimary],
+    );
+
+    return {
+      transform: [{ scale: scale.value }],
+      borderWidth: borderWidth.value,
+      backgroundColor,
+      borderColor,
+    };
+  });
+
+  const animatedIconStyle = useAnimatedStyle(() => {
+    const iconBg = interpolateColor(progress.value, [0, 1], ['#F5F5F5', '#E6F2FF']);
+    return {
+      backgroundColor: iconBg,
+    };
+  });
+
+  return (
+    <Pressable onPress={onPress}>
+      <Animated.View style={[style, animatedStyle]}>
+        <Animated.View style={[iconStyle, animatedIconStyle]}>
+          <Feather
+            name={icon as any}
+            size={18}
+            color={isActive ? coffeeColors.brandPrimary : coffeeColors.textSecondary}
+          />
+        </Animated.View>
+        <View style={styles.optionText}>
+          <Text style={styles.optionTitle}>{title}</Text>
+          <Text style={styles.optionSubtitle}>{subtitle}</Text>
+        </View>
+        {badge && (
+          <Text style={[badgeStyle, isActive && styles.optionBadgeActive]}>{badge}</Text>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+AnimatedDeliveryOption.displayName = 'AnimatedDeliveryOption';
+
+type AnimatedPaymentOptionProps = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  isSelected: boolean;
+  onPress: () => void;
+  style?: any;
+  iconStyle?: any;
+};
+
+const AnimatedPaymentOption = memo(({ id, title, subtitle, icon, isSelected, onPress, style, iconStyle }: AnimatedPaymentOptionProps) => {
+  const progress = useSharedValue(isSelected ? 1 : 0);
+  const scale = useSharedValue(isSelected ? 1.02 : 1);
+  const borderWidth = useSharedValue(isSelected ? 2 : 1);
+
+  React.useEffect(() => {
+    progress.value = withSpring(isSelected ? 1 : 0, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(isSelected ? 1.02 : 1, { damping: 15, stiffness: 200 });
+    borderWidth.value = withTiming(isSelected ? 2 : 1, { duration: 200 });
+  }, [isSelected, progress, scale, borderWidth]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [coffeeColors.surface, '#E6F2FF'],
+    );
+    const borderColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [coffeeColors.surfaceBorder, coffeeColors.brandPrimary],
+    );
+
+    return {
+      transform: [{ scale: scale.value }],
+      borderWidth: borderWidth.value,
+      backgroundColor,
+      borderColor,
+    };
+  });
+
+  return (
+    <Pressable onPress={onPress}>
+      <Animated.View style={[style, animatedStyle]}>
+        <View style={iconStyle} />
+        <View style={styles.optionText}>
+          <Text style={styles.optionTitle}>{title}</Text>
+          <Text style={styles.optionSubtitle}>{subtitle}</Text>
+        </View>
+        {isSelected ? (
+          <Feather name='check-circle' size={18} color={coffeeColors.brandPrimary} />
+        ) : (
+          <Feather name='circle' size={18} color={coffeeColors.surfaceBorder} />
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+AnimatedPaymentOption.displayName = 'AnimatedPaymentOption';
+
 type CartItemRowProps = {
   item: CartItemWithImage;
   onIncrement: (id: string) => void;
@@ -340,16 +448,43 @@ type CartItemRowProps = {
 };
 
 const CartItemRow = memo(({ item, onIncrement, onDecrement, onRemove, formatCurrency }: CartItemRowProps) => {
-  const increment = useCallback(() => onIncrement(item.id), [item.id, onIncrement]);
-  const decrement = useCallback(() => onDecrement(item.id), [item.id, onDecrement]);
-  const remove = useCallback(() => onRemove(item.id), [item.id, onRemove]);
+  const opacity = useSharedValue(1);
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+
+  const increment = useCallback(() => {
+    scale.value = withSpring(1.1, { damping: 10 }, () => {
+      scale.value = withSpring(1, { damping: 10 });
+    });
+    onIncrement(item.id);
+  }, [item.id, onIncrement, scale]);
+
+  const decrement = useCallback(() => {
+    scale.value = withSpring(0.95, { damping: 10 }, () => {
+      scale.value = withSpring(1, { damping: 10 });
+    });
+    onDecrement(item.id);
+  }, [item.id, onDecrement, scale]);
+
+  const remove = useCallback(() => {
+    opacity.value = withTiming(0, { duration: 200 });
+    translateX.value = withTiming(-300, { duration: 200 }, () => {
+      onRemove(item.id);
+    });
+  }, [item.id, onRemove, opacity, translateX]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }, { translateX: translateX.value }],
+  }));
+
   if (__DEV__) {
     // eslint-disable-next-line no-console
     console.count(`CartItemRow render – ${item.id}`);
   }
 
   return (
-    <View style={styles.itemCard}>
+    <Animated.View style={[styles.itemCard, animatedStyle]}>
       <Image source={{ uri: item.image }} style={styles.itemImage} />
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>
@@ -375,7 +510,7 @@ const CartItemRow = memo(({ item, onIncrement, onDecrement, onRemove, formatCurr
           <Text style={styles.itemTotal}>{formatCurrency(item.price * item.quantity)}</Text>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 });
 

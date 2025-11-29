@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MilkSelector } from '@/components/coffee/MilkSelector';
 import { PrimaryButton } from '@/components/coffee/PrimaryButton';
@@ -104,6 +104,7 @@ export default function ProductDetailsScreen() {
   const [product, setProduct] = useState<ProductData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const styles = useMemo(() => createStyles(palette), [palette]);
   const totalPrice = useMemo(() => {
@@ -212,18 +213,43 @@ export default function ProductDetailsScreen() {
     router.push('/(tabs)/cart');
   };
 
+  const imageTranslateY = scrollY.interpolate({
+    inputRange: [-200, 0, 200],
+    outputRange: [-50, 0, 100],
+    extrapolate: 'clamp',
+  });
+
+  const imageOpacity = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [1, 0.3],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={styles.root}>
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: false,
+          listener: () => {},
+        })}
+        scrollEventThrottle={16}>
         {/* Header with image */}
         <View style={styles.imageContainer}>
-          <Image
+          <Animated.Image
             source={{
               uri:
                 product.imageUrl ??
                 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80',
             }}
-            style={styles.image}
+            style={[
+              styles.image,
+              {
+                transform: [{ translateY: imageTranslateY }],
+                opacity: imageOpacity,
+              },
+            ]}
           />
           <LinearGradient
             colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.2)', 'transparent']}
@@ -295,7 +321,7 @@ export default function ProductDetailsScreen() {
             />
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bottom CTA Bar */}
       <LinearGradient
@@ -326,10 +352,11 @@ const createStyles = (palette: ThemePalette) =>
       width: '100%',
       height: 384,
       position: 'relative',
+      overflow: 'hidden',
     },
     image: {
       width: '100%',
-      height: '100%',
+      height: '120%',
     },
     imageGradient: {
       position: 'absolute',

@@ -24,6 +24,12 @@ const categories = [
   { id: '2', emoji: '🧊', label: 'Cold' },
   { id: '3', emoji: '🥐', label: 'Snacks' },
   { id: '4', emoji: '🍵', label: 'Tea' },
+  { id: '5', emoji: '☕', label: 'Espresso' },
+  { id: '6', emoji: '🥤', label: 'Smoothies' },
+  { id: '7', emoji: '🍰', label: 'Desserts' },
+  { id: '8', emoji: '🥪', label: 'Sandwiches' },
+  { id: '9', emoji: '🥞', label: 'Breakfast' },
+  { id: '10', emoji: '🥨', label: 'Pastries' },
 ];
 
 const nearbyShops = [
@@ -118,7 +124,11 @@ export default function HomeScreen() {
         {/* Categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
-          <View style={styles.categoriesContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesContainer}
+            style={styles.categoriesScrollView}>
             {categories.map((category) => (
               <CategoryButton
                 key={category.id}
@@ -127,7 +137,7 @@ export default function HomeScreen() {
                 onPress={() => handleCategoryPress(category.id)}
               />
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Nearby Shops */}
@@ -244,10 +254,14 @@ const createStyles = (palette: ThemePalette) =>
       ...coffeeTypography.paragraph,
       fontWeight: '500',
     },
+    categoriesScrollView: {
+      marginHorizontal: -coffeeSpacing.lg,
+      paddingHorizontal: coffeeSpacing.lg,
+    },
     categoriesContainer: {
       flexDirection: 'row',
       gap: coffeeSpacing.md,
-      justifyContent: 'space-between',
+      paddingRight: coffeeSpacing.lg,
     },
     shopsContainer: {
       gap: coffeeSpacing.md,

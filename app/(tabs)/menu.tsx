@@ -5,6 +5,7 @@ import {
   FlatList,
   ListRenderItem,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -22,6 +23,12 @@ const filters = [
   { id: 'coffee', label: '☕ Coffee' },
   { id: 'cold', label: '🧊 Cold' },
   { id: 'snacks', label: '🥐 Snacks' },
+  { id: 'espresso', label: '☕ Espresso' },
+  { id: 'smoothies', label: '🥤 Smoothies' },
+  { id: 'desserts', label: '🍰 Desserts' },
+  { id: 'sandwiches', label: '🥪 Sandwiches' },
+  { id: 'breakfast', label: '🥞 Breakfast' },
+  { id: 'pastries', label: '🥨 Pastries' },
 ];
 
 type MenuItem = {
@@ -29,7 +36,7 @@ type MenuItem = {
   title: string;
   description: string;
   price: number;
-  category: 'coffee' | 'cold' | 'snacks';
+  category: 'coffee' | 'cold' | 'snacks' | 'espresso' | 'smoothies' | 'desserts' | 'sandwiches' | 'breakfast' | 'pastries';
   badgeLabel?: string;
   imageUrl?: string;
 };
@@ -43,11 +50,17 @@ const menuImages = [
   'https://images.unsplash.com/photo-1481391032119-d89fee407e44?auto=format&fit=crop&w=400&q=80',
 ];
 
-const categoryCycle: MenuItem['category'][] = ['coffee', 'cold', 'snacks'];
+const categoryCycle: MenuItem['category'][] = ['coffee', 'cold', 'snacks', 'espresso', 'smoothies', 'desserts', 'sandwiches', 'breakfast', 'pastries'];
 const badgeByCategory: Record<MenuItem['category'], string> = {
   coffee: 'Hot',
   cold: 'Iced',
   snacks: 'Fresh',
+  espresso: 'Strong',
+  smoothies: 'Refreshing',
+  desserts: 'Sweet',
+  sandwiches: 'Fresh',
+  breakfast: 'Morning',
+  pastries: 'Baked',
 };
 
 const mapPostToMenuItem = (post: Post, index: number): MenuItem => {
@@ -159,7 +172,11 @@ export default function MenuScreen() {
           <Text style={styles.headerTitle}>Menu</Text>
         </View>
         <SearchInput placeholder="Search drinks or food..." value={searchQuery} onChangeText={setSearchQuery} />
-        <View style={styles.filtersRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersRow}
+          style={styles.filtersScrollView}>
           {filters.map((filter) => {
             const isActive = filter.id === selectedFilter;
             return (
@@ -171,7 +188,7 @@ export default function MenuScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
       <FlatList
@@ -232,10 +249,14 @@ const createStyles = (palette: ThemePalette) =>
       ...coffeeTypography.heading,
       fontSize: 24,
     },
+    filtersScrollView: {
+      marginHorizontal: -coffeeSpacing.lg,
+      paddingHorizontal: coffeeSpacing.lg,
+    },
     filtersRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       gap: coffeeSpacing.sm,
+      paddingRight: coffeeSpacing.lg,
     },
     filterChip: {
       paddingHorizontal: coffeeSpacing.md,

@@ -161,7 +161,7 @@ export default function CartScreen() {
   }
 
   return (
-    <ScreenContainer withPadding={false}>
+    <ScreenContainer>
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Feather name='chevron-left' size={20} color={coffeeColors.textPrimary} />

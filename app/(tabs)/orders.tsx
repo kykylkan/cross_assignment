@@ -89,7 +89,7 @@ export default function OrdersScreen() {
   };
 
   return (
-    <ScreenContainer withPadding={false}>
+    <ScreenContainer>
       <View style={styles.content}>
         <View style={styles.headerCard}>
           <Text style={styles.headerTitle}>Order History</Text>

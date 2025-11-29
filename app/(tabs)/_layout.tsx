@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 16,
+    bottom: 0,
     height: 88,
     borderRadius: 32,
     backgroundColor: coffeeColors.surface,

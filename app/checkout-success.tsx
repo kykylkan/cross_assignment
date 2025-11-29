@@ -31,7 +31,7 @@ export default function CheckoutSuccessScreen() {
   const router = useRouter();
 
   return (
-    <ScreenContainer withPadding={false}>
+    <ScreenContainer>
       <View style={styles.content}>
         <LinearGradient colors={['#0A6BFF', '#58A6FF']} style={styles.heroCard}>
           <Text style={styles.orderNumber}>Order #70887</Text>
@@ -132,7 +132,6 @@ const isLast = (index: number) => index === timeline.length - 1;
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    padding: coffeeSpacing.lg,
     gap: coffeeSpacing.lg,
   },
   heroCard: {

@@ -63,7 +63,7 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <ScreenContainer withPadding={false}>
+    <ScreenContainer>
       <View style={styles.content}>
         <View style={styles.header}>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
@@ -182,7 +182,6 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   content: {
     width: '100%',
-    padding: coffeeSpacing.lg,
     gap: coffeeSpacing.lg,
   },
   header: {

@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
 import {
@@ -12,16 +12,14 @@ import {
   coffeeSpacing,
   coffeeTypography,
 } from '@/constants/coffeeTheme';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { fetchUserById } from '@/lib/api';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [pushEnabled, setPushEnabled] = useState(true);
-
-  const user = {
-    name: 'Alexander',
-    email: 'alex@example.com',
-    phone: '+1 234 567 8900',
-  };
+  const [avatarError, setAvatarError] = useState(false);
+  const { data: user, isLoading, error } = useAsyncData(() => fetchUserById(1), []);
 
   const stats = [
     { id: 'orders', label: 'Orders', value: '24' },
@@ -29,11 +27,13 @@ export default function ProfileScreen() {
     { id: 'savings', label: 'Saved', value: '$120' },
   ];
 
-  const personalFields = [
-    { id: 'fullName', label: 'Full Name', value: user.name },
-    { id: 'email', label: 'Email', value: user.email },
-    { id: 'phone', label: 'Phone', value: user.phone },
-  ];
+  const personalFields = user
+    ? [
+        { id: 'fullName', label: 'Full Name', value: user.name },
+        { id: 'email', label: 'Email', value: user.email },
+        { id: 'phone', label: 'Phone', value: user.phone },
+      ]
+    : [];
 
   const quickShortcuts: Array<{
     id: string;
@@ -118,8 +118,29 @@ export default function ProfileScreen() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <ScreenContainer>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={coffeeColors.brandPrimary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <ScreenContainer>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'User data not found'}</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   return (
-    <ScreenContainer withPadding={false}>
+    <ScreenContainer>
       <View style={styles.content}>
         <LinearGradient
           colors={['#0070FD', '#2B91FF']}
@@ -135,10 +156,21 @@ export default function ProfileScreen() {
 
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarInitial}>{user.name.charAt(0)}</Text>
-              <Pressable style={styles.avatarEdit} hitSlop={12}>
-                <Feather name="camera" size={14} color={coffeeColors.brandPrimary} />
-              </Pressable>
+              {!avatarError ? (
+                <Image
+                  source={{
+                    uri: 'https://i.pravatar.cc/150?img=12',
+                  }}
+                  style={styles.avatarImage}
+                  onError={() => setAvatarError(true)}
+                />
+              ) : null}
+              {/*<View style={styles.avatarInitialFallback}>*/}
+              {/*  <Text style={styles.avatarInitial}>{user.name.charAt(0)}</Text>*/}
+              {/*</View>*/}
+              {/*<Pressable style={styles.avatarEdit} hitSlop={12}>*/}
+              {/*  <Feather name="camera" size={14} color={coffeeColors.brandPrimary} />*/}
+              {/*</Pressable>*/}
             </View>
 
             <View style={styles.userMeta}>
@@ -284,6 +316,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 46,
+  },
+  avatarInitialFallback: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   avatarInitial: {
     color: '#FFFFFF',
@@ -439,6 +485,29 @@ const styles = StyleSheet.create({
   },
   versionLabel: {
     color: coffeeColors.textSecondary,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: coffeeSpacing.md,
+    padding: coffeeSpacing.xl,
+  },
+  loadingText: {
+    color: coffeeColors.textSecondary,
+    ...coffeeTypography.paragraph,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: coffeeSpacing.md,
+    padding: coffeeSpacing.xl,
+  },
+  errorText: {
+    color: coffeeColors.textSecondary,
+    ...coffeeTypography.paragraph,
     textAlign: 'center',
   },
 });

@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { PrimaryButton } from '@/components/coffee/PrimaryButton';
 import { ScreenContainer } from '@/components/coffee/ScreenContainer';
 import { coffeeColors, coffeeRadius, coffeeSpacing, coffeeTypography } from '@/constants/coffeeTheme';
 
